@@ -6,7 +6,6 @@ import numpy as np
 import os
 import random
 import tensorflow as tf
-from tensorflow.math import sigmoid
 from tqdm import tqdm
 
 from vae import VAE, CVAE, reparametrize, loss_function

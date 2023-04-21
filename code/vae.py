@@ -1,7 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Flatten, Reshape
-from tensorflow.math import exp, sqrt, square
 
 
 class VAE(tf.keras.Model):
@@ -212,7 +209,7 @@ def reparametrize(mu, logvar):
     # posterior mu and sigma to estimate z                                                         #
     ################################################################################################
     # Replace "pass" statement with your code
-    sigma = tf.sqrt(tf.exp(logvar))  # correct?
+    sigma = tf.sqrt(tf.math.exp(logvar))  # correct?
     epsilon = tf.random.normal(mu.shape)  # what shape
 
     z = sigma * epsilon + mu
@@ -264,8 +261,8 @@ def loss_function(x_hat, x, mu, logvar):
     # Replace "pass" statement with your code
 
     bce = bce_function(x_hat, x)
-    var = exp(logvar)
-    div = -0.5*tf.reduce_sum(1 + logvar - square(mu) - var)
+    var = tf.math.exp(logvar)
+    div = -0.5*tf.reduce_sum(1 + logvar - tf.math.square(mu) - var)
 
     loss = bce + div
     loss = loss/x_hat.shape[0]
