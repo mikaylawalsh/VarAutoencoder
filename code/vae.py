@@ -9,7 +9,7 @@ class VAE(tf.keras.Model):
         super(VAE, self).__init__()
         self.input_size = input_size  # H*W
         self.latent_size = latent_size  # Z
-        self.hidden_dim = None  # H_d
+        self.hidden_dim = 256  # H_d
         self.encoder = None
         self.mu_layer = None
         self.logvar_layer = None
@@ -24,7 +24,16 @@ class VAE(tf.keras.Model):
         # vectors; the mean and log-variance estimates will both be tensors of shape (N, Z).       #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+
+        self.flatten = tf.keras.layers.Flatten()
+        self.map = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense1 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense2 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.encoder = tf.keras.Sequential(
+            [self.flatten, self.map, self.dense1, self.dense2])
+
+        self.mu_layer = tf.keras.layers.Dense(self.latent_size)
+        self.logvar_layer = tf.keras.layers.Dense(self.latent_size)
 
         ############################################################################################
         # TODO: Implement the fully-connected decoder architecture described in the notebook.      #
@@ -32,7 +41,16 @@ class VAE(tf.keras.Model):
         # shape (N, Z) and outputs a tensor of estimated images of shape (N, 1, H, W).             #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+
+        self.latent = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense3 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense4 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.resize = tf.keras.layers.Dense(
+            self.input_size, activation='sigmoid')
+        self.reshape = tf.keras.layers.Reshape(
+            (-1, 28, 28))  # how to get h, w from h*w
+        self.decoder = tf.keras.Sequential(
+            [self.latent, self.dense3, self.dense4, self.resize, self.reshape])
 
         ############################################################################################
         #                                      END OF YOUR CODE                                    #
@@ -42,10 +60,10 @@ class VAE(tf.keras.Model):
         """
         Performs forward pass through FC-VAE model by passing image through 
         encoder, reparametrize trick, and decoder models
-    
+
         Inputs:
         - x: Batch of input images of shape (N, 1, H, W)
-        
+
         Returns:
         - x_hat: Reconstruced input data of shape (N,1,H,W)
         - mu: Matrix representing estimated posterior mu (N, Z), with Z latent space dimension
@@ -61,7 +79,12 @@ class VAE(tf.keras.Model):
         # (3) Pass z through the decoder to resconstruct x                                         #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+
+        encoded_inputs = self.encoder(x)  # output is (N, H_d)
+        mu = self.mu_layer(encoded_inputs)  # not sure
+        logvar = self.logvar_layer(encoded_inputs)  # not sure
+        z = reparametrize(mu, logvar)
+        x_hat = self.decoder(z)
 
         ############################################################################################
         #                                      END OF YOUR CODE                                    #
@@ -75,7 +98,7 @@ class CVAE(tf.keras.Model):
         self.input_size = input_size  # H*W
         self.latent_size = latent_size  # Z
         self.num_classes = num_classes  # C
-        self.hidden_dim = None  # H_d
+        self.hidden_dim = 256  # H_d
         self.encoder = None
         self.mu_layer = None
         self.logvar_layer = None
@@ -88,14 +111,31 @@ class CVAE(tf.keras.Model):
         # to posterior mu and posterior log-variance estimates of the latent space (N, Z)          #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+
+        self.flatten = tf.keras.layers.Flatten()
+        self.map = tf.keras.layers.Dense(self.hidden_dim, activation='relu', input_dim=(self.input_size + self.num_classes)) # how to edit to take in multiple inputs
+        self.dense1 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense2 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.encoder = tf.keras.Sequential(
+            [self.flatten, self.map, self.dense1, self.dense2])
+
+        self.mu_layer = tf.keras.layers.Dense(self.latent_size)
+        self.logvar_layer = tf.keras.layers.Dense(self.latent_size)
 
         ############################################################################################
         # TODO: Define a fully-connected decoder as described in the notebook that transforms the  #
         # latent space (N, Z + C) to the estimated images of shape (N, 1, H, W).                   #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+        self.latent = tf.keras.layers.Dense(self.hidden_dim, activation='relu', input_dim=(self.latent_size + self.num_classes)) # how to edit
+        self.dense3 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.dense4 = tf.keras.layers.Dense(self.hidden_dim, activation='relu')
+        self.resize = tf.keras.layers.Dense(
+            self.input_size, activation='sigmoid')
+        self.reshape = tf.keras.layers.Reshape(
+            (-1, 28, 28))
+        self.decoder = tf.keras.Sequential(
+            [self.latent, self.dense3, self.dense4, self.resize, self.reshape])
 
         ############################################################################################
         #                                      END OF YOUR CODE                                    #
@@ -105,11 +145,11 @@ class CVAE(tf.keras.Model):
         """
         Performs forward pass through FC-CVAE model by passing image through 
         encoder, reparametrize trick, and decoder models
-    
+
         Inputs:
         - x: Input data for this timestep of shape (N, 1, H, W)
         - c: One hot vector representing the input class (0-9) (N, C)
-        
+
         Returns:
         - x_hat: Reconstruced input data of shape (N, 1, H, W)
         - mu: Matrix representing estimated posterior mu (N, Z), with Z latent space dimension
@@ -126,7 +166,17 @@ class CVAE(tf.keras.Model):
         # (3) Pass concatenation of z and one hot vectors through the decoder to resconstruct x    #
         ############################################################################################
         # Replace "pass" statement with your code
-        pass
+        
+        x = tf.cast(x, dtype=tf.float32)
+        x = tf.reshape(x, (x.shape[0], -1))
+        c = tf.cast(c, dtype=tf.float32)
+        combo = tf.concat([x, c], 1) # correct axis? 
+        encoded_inputs = self.encoder(combo) 
+        mu = self.mu_layer(encoded_inputs) 
+        logvar = self.logvar_layer(encoded_inputs)  
+        z = reparametrize(mu, logvar)
+        combo2 = tf.concat([z, c], 1)
+        x_hat = self.decoder(combo2)
 
         ############################################################################################
         #                                      END OF YOUR CODE                                    #
@@ -162,7 +212,10 @@ def reparametrize(mu, logvar):
     # posterior mu and sigma to estimate z                                                         #
     ################################################################################################
     # Replace "pass" statement with your code
-    pass
+    sigma = tf.sqrt(tf.exp(logvar))  # correct?
+    epsilon = tf.random.normal(mu.shape)  # what shape
+
+    z = sigma * epsilon + mu
 
     ################################################################################################
     #                              END OF YOUR CODE                                                #
@@ -173,11 +226,11 @@ def reparametrize(mu, logvar):
 def bce_function(x_hat, x):
     """
     Computes the reconstruction loss of the VAE.
-    
+
     Inputs:
     - x_hat: Reconstructed input data of shape (N, 1, H, W)
     - x: Input data for this timestep of shape (N, 1, H, W)
-    
+
     Returns:
     - reconstruction_loss: Tensor containing the scalar loss for the reconstruction loss term.
     """
@@ -200,7 +253,7 @@ def loss_function(x_hat, x, mu, logvar):
     - x: Input data for this timestep of shape (N, 1, H, W)
     - mu: Matrix representing estimated posterior mu (N, Z), with Z latent space dimension
     - logvar: Matrix representing estimated variance in log-space (N, Z), with Z latent space dimension
-    
+
     Returns:
     - loss: Tensor containing the scalar loss for the negative variational lowerbound
     """
@@ -209,7 +262,13 @@ def loss_function(x_hat, x, mu, logvar):
     # TODO: Compute negative variational lowerbound loss as described in the notebook              #
     ################################################################################################
     # Replace "pass" statement with your code
-    pass
+
+    bce = bce_function(x_hat, x)
+    var = exp(logvar)
+    div = -0.5*tf.reduce_sum(1 + logvar - square(mu) - var)
+
+    loss = bce + div
+    loss = loss/x_hat.shape[0]
 
     ################################################################################################
     #                            END OF YOUR CODE                                                  #

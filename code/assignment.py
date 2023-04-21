@@ -60,8 +60,22 @@ def train_vae(model, train_loader, args, is_cvae=False):
     Returns:
     - total_loss: Sum of loss values of all batches.
     """
-    pass
+    tot_loss = 0
+    optimizer = tf.keras.optimizers.Adam(args.learning_rate)
+    for images, labels in train_loader:
+        with tf.GradientTape() as tape:
+            if not is_cvae:
+                logits = model.call(images)
+            else: 
+                encoded_labels = one_hot(labels, 10)
+                logits = model.call(images, encoded_labels)
+            x_hat, mu, logvar = logits
+            loss = loss_function(x_hat, images, mu, logvar)
+            tot_loss += loss
+        grads = tape.gradient(loss, model.trainable_weights)
+        optimizer.apply_gradients(zip(grads, model.trainable_weights)) 
 
+    return tot_loss 
 
 def load_mnist(batch_size, buffer_size=1024):
     """
