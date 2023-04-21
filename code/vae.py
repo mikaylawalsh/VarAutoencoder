@@ -95,7 +95,7 @@ class CVAE(tf.keras.Model):
         self.input_size = input_size  # H*W
         self.latent_size = latent_size  # Z
         self.num_classes = num_classes  # C
-        self.hidden_dim = 500  # H_d
+        self.hidden_dim = 100  # H_d
         self.encoder = None
         self.mu_layer = None
         self.logvar_layer = None
